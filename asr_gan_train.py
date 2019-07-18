@@ -39,7 +39,7 @@ def main():
     # data
     logging.info("Building dataset.")
     train_dataset = SequentialDataset(opt, os.path.join(opt.dataroot, 'train'), os.path.join(opt.dict_dir, 'train_units.txt'),) 
-    val_dataset = SequentialDataset(opt, os.path.join(opt.dataroot, 'dev'), os.path.join(opt.dict_dir, 'train_units.txt'),)    
+    val_dataset = SequentialDataset(opt, os.path.join(opt.dataroot, 'test'), os.path.join(opt.dict_dir, 'train_units.txt'),)    
     train_sampler = BucketingSampler(train_dataset, batch_size=opt.batch_size) 
     train_loader = SequentialDataLoader(train_dataset, num_workers=opt.num_workers, batch_sampler=train_sampler)
     val_loader = SequentialDataLoader(val_dataset, batch_size=int(opt.batch_size/2), num_workers=opt.num_workers, shuffle=False)
@@ -53,7 +53,7 @@ def main():
     
     # Setup a model
     asr_model = E2E(opt)
-    ##fbank_model = FbankModel(opt)
+    fbank_model = FbankModel(opt)
     lr = opt.lr
     eps = opt.eps
     iters = opt.iters
@@ -77,28 +77,26 @@ def main():
             visualizer.set_plot_report(loss_report, 'loss.png')
             
             asr_model = E2E.load_model(model_path, 'asr_state_dict') 
-            ##fbank_model = FbankModel.load_model(model_path, 'fbank_state_dict') 
-            logging.info('Loading model {} and iters {}'.format(model_path, iters))
+            fbank_model = FbankModel.load_model(model_path, 'fbank_state_dict') 
+            logging.info('Loading model {} and iters {}'.format(model_path, opt.iters))
         else:
             print("no checkpoint found at {}".format(model_path))                
     asr_model.cuda()
-    ##fbank_model.cuda()
-    print(asr_model)
+    fbank_model.cuda()
+    print(asr_model, fbank_model)
   
     # Setup an optimizer
-    #parameters = filter(lambda p: p.requires_grad, itertools.chain(asr_model.parameters(), fbank_model.parameters()))
-    parameters = filter(lambda p: p.requires_grad, itertools.chain(asr_model.parameters()))
+    parameters = filter(lambda p: p.requires_grad, itertools.chain(asr_model.parameters(), fbank_model.parameters()))
     if opt.opt_type == 'adadelta':
         optimizer = torch.optim.Adadelta(parameters, rho=0.95, eps=eps)
     elif opt.opt_type == 'adam':
         optimizer = torch.optim.Adam(parameters, lr=lr, betas=(opt.beta1, 0.999))                       
            
     asr_model.train()
-    #fbank_model.train()    
-    sample_rampup = utils.ScheSampleRampup(opt.sche_samp_start_iter, opt.sche_samp_final_iter, opt.sche_samp_final_rate)  
-    sche_samp_rate = sample_rampup.update(iters)
+    fbank_model.train()    
+    sample_rampup = utils.ScheSampleRampup(opt.sche_samp_start_epoch, opt.sche_samp_final_epoch, opt.sche_samp_final_rate)  
     
-    '''fbank_cmvn_file = os.path.join(opt.exp_path, 'fbank_cmvn.npy')
+    fbank_cmvn_file = os.path.join(opt.exp_path, 'fbank_cmvn.npy')
     if os.path.exists(fbank_cmvn_file):
         fbank_cmvn = np.load(fbank_cmvn_file)
     else:
@@ -109,21 +107,22 @@ def main():
                 np.save(fbank_cmvn_file, fbank_cmvn)
                 print('save fbank_cmvn to {}'.format(fbank_cmvn_file))
                 break
-    fbank_cmvn = torch.FloatTensor(fbank_cmvn)'''
+    fbank_cmvn = torch.FloatTensor(fbank_cmvn)
                      
     for epoch in range(start_epoch, opt.epochs):
+        sche_samp_rate = sample_rampup.update(epoch)
+        print("epoch {} sche_samp_rate {}".format(epoch, sche_samp_rate))
         if epoch > opt.shuffle_epoch:
             print("Shuffling batches for the following epochs")
             train_sampler.shuffle(epoch)                    
-        for i, (data) in enumerate(train_loader, start=(iters*opt.batch_size)%len(train_dataset)):
-            #utt_ids, spk_ids, inputs, log_inputs, targets, input_sizes, target_sizes = data
-            #fbank_features = fbank_model(inputs, fbank_cmvn)
-            utt_ids, spk_ids, fbank_features, targets, input_sizes, target_sizes = data
-            loss_ctc, loss_att, acc, context = asr_model(fbank_features, targets, input_sizes, target_sizes, sche_samp_rate) 
+        for i, (data) in enumerate(train_loader, start=0):
+            utt_ids, spk_ids, inputs, log_inputs, targets, input_sizes, target_sizes = data
+            fbank_features = fbank_model(inputs, fbank_cmvn)
+            loss_ctc, loss_att, acc = asr_model(fbank_features, targets, input_sizes, target_sizes, sche_samp_rate) 
             loss = opt.mtlalpha * loss_ctc + (1 - opt.mtlalpha) * loss_att
             optimizer.zero_grad()  # Clear the parameter gradients
             loss.backward()          
-            # compute the gradient norm to check if it is normal or not 'fbank_state_dict': fbank_model.state_dict(), 
+            # compute the gradient norm to check if it is normal or not
             grad_norm = torch.nn.utils.clip_grad_norm_(asr_model.parameters(), opt.grad_clip)
             if math.isnan(grad_norm):
                 logging.warning('grad norm is nan. Do not update model.')
@@ -137,6 +136,7 @@ def main():
             if iters % opt.print_freq == 0:
                 visualizer.print_current_errors(epoch, iters)
                 state = {'asr_state_dict': asr_model.state_dict(), 
+                         'fbank_state_dict': fbank_model.state_dict(), 
                          'opt': opt, 'epoch': epoch, 'iters': iters, 
                          'eps': opt.eps, 'lr': opt.lr,                                    
                          'best_loss': best_loss, 'best_acc': best_acc, 
@@ -145,17 +145,14 @@ def main():
                 utils.save_checkpoint(state, opt.exp_path, filename=filename)
                     
             if iters % opt.validate_freq == 0:
-                sche_samp_rate = sample_rampup.update(iters)
-                print("iters {} sche_samp_rate {}".format(iters, sche_samp_rate))  
                 asr_model.eval()
-                #fbank_model.eval() 
+                fbank_model.eval() 
                 torch.set_grad_enabled(False)
                 num_saved_attention = 0
                 for i, (data) in tqdm(enumerate(val_loader, start=0)):
-                    #utt_ids, spk_ids, inputs, log_inputs, targets, input_sizes, target_sizes = data
-                    #fbank_features = fbank_model(inputs, fbank_cmvn)
-                    utt_ids, spk_ids, fbank_features, targets, input_sizes, target_sizes = data
-                    loss_ctc, loss_att, acc, context = asr_model(fbank_features, targets, input_sizes, target_sizes, 0.0) 
+                    utt_ids, spk_ids, inputs, log_inputs, targets, input_sizes, target_sizes = data
+                    fbank_features = fbank_model(inputs, fbank_cmvn)
+                    loss_ctc, loss_att, acc = asr_model(fbank_features, targets, input_sizes, target_sizes, sche_samp_rate) 
                     loss = opt.mtlalpha * loss_ctc + (1 - opt.mtlalpha) * loss_att                            
                     errors = {'val/loss': loss.item(), 'val/loss_ctc': loss_ctc.item(), 
                               'val/acc': acc, 'val/loss_att': loss_att.item()}
@@ -175,7 +172,7 @@ def main():
                                 if num_saved_attention >= opt.num_save_attention:   
                                     break                                                       
                 asr_model.train()
-                #fbank_model.train() 
+                fbank_model.train() 
                 torch.set_grad_enabled(True)
                 
                 visualizer.print_epoch_errors(epoch, iters)  
@@ -201,6 +198,7 @@ def main():
                     best_loss = min(val_loss, best_loss)
                     logging.info('best_loss {}'.format(best_loss))                  
                 state = {'asr_state_dict': asr_model.state_dict(), 
+                         'fbank_state_dict': fbank_model.state_dict(), 
                          'opt': opt, 'epoch': epoch, 'iters': iters, 
                          'eps': opt.eps, 'lr': opt.lr,                                    
                          'best_loss': best_loss, 'best_acc': best_acc, 

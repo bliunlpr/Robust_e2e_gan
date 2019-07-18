@@ -109,10 +109,11 @@ def main():
             utt_ids, spk_ids, clean_inputs, clean_log_inputs, mix_inputs, mix_log_inputs, cos_angles, targets, input_sizes, target_sizes = data
             if opt.enhance_type == 'unet_128' or opt.enhance_type == 'unet_256':
                 t_step = int(clean_inputs.size(1))
-                t_step = t_step - t_step % 32
-                clean_inputs = clean_inputs[:, :t_step, :256]
-                mix_inputs = mix_inputs[:, :t_step, :256]
-                mix_log_inputs = mix_log_inputs[:, :t_step, :256] 
+                if t_step % 4 != 0:
+                    t_step = t_step - t_step % 4
+                    clean_inputs = clean_inputs[:, :t_step, :]
+                    mix_inputs = mix_inputs[:, :t_step, :]
+                    mix_log_inputs = mix_log_inputs[:, :t_step, :] 
                 mix_log_inputs = mix_log_inputs.unsqueeze(1)                
             enhance_out = enhance_model(mix_inputs, mix_log_inputs, input_sizes) 
             enhance_feat = feat_model(enhance_out)

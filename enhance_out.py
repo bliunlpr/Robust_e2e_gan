@@ -14,7 +14,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 from options.test_options import TestOptions
-from model.enhance_model import EnhanceModel
+from model.enhance_model import EnhanceModel, EnhanceConditionModel
 from data.mix_data_loader import MixSequentialDataset, MixSequentialDataLoader, BucketingSampler
 from data import kaldi_io
 from utils import utils 
@@ -46,7 +46,10 @@ def main():
         model_path = os.path.join(opt.works_dir, opt.resume)
         if os.path.isfile(model_path):
             package = torch.load(model_path, map_location=lambda storage, loc: storage)
-            model = EnhanceModel.load_model(model_path, 'enhance_state_dict') 
+            if opt.enhance_type == 'enhance_condition':
+                model = EnhanceConditionModel.load_model(model_path, 'enhance_state_dict') 
+            else:
+                model = EnhanceModel.load_model(model_path, 'enhance_state_dict') 
             logging.info('Loading model {}'.format(model_path))
         else:
             raise Exception("no checkpoint found at {}".format(opt.resume))     

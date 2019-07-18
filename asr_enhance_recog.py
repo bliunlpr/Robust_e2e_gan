@@ -15,9 +15,10 @@ import torch
 from options.test_options import TestOptions
 from model.feat_model import FFTModel, FbankModel
 from model.e2e_model import E2E
+from model.enhance_model import EnhanceModel
 from model import lm, extlm, fsrnn
 from model.fstlm import NgramFstLM
-from data.data_loader import SequentialDataset, SequentialDataLoader, BucketingSampler
+from data.data_loader import SequentialDataset, SequentialDataLoader
 from utils.visualizer import Visualizer 
 from utils import utils 
 
@@ -54,12 +55,25 @@ logging.info("Dataset ready!")
                                               
 def main():
     
+    # Setup a model  
+    if opt.enhance_resume:
+        model_path = os.path.join(opt.works_dir, opt.enhance_resume)
+        if os.path.isfile(model_path):
+            package = torch.load(model_path, map_location=lambda storage, loc: storage)
+            enhance_model = EnhanceModel.load_model(model_path, 'enhance_state_dict') 
+            logging.info('Loading model {}'.format(model_path))
+        else:
+            logging.info("no checkpoint found at {}".format(opt.enhance_resume))     
+    else:
+        logging.info("no checkpoint found at {}".format(opt.enhance_resume))
+        
     if opt.resume:
         model_path = os.path.join(opt.works_dir, opt.resume)
         if not os.path.isfile(model_path):
             raise Exception("no checkpoint found at {}".format(model_path))
         
-        package = torch.load(model_path, map_location=lambda storage, loc: storage)        
+        package = torch.load(model_path, map_location=lambda storage, loc: storage)  
+        enhance_model = EnhanceModel.load_model(model_path, 'enhance_state_dict', opt)       
         feat_model = FbankModel.load_model(model_path, 'fbank_state_dict', opt) 
         asr_model = E2E.load_model(model_path, 'asr_state_dict', opt) 
         logging.info('Loading model {}'.format(model_path))
@@ -141,10 +155,8 @@ def main():
         utt_ids, spk_ids, inputs, log_inputs, targets, input_sizes, target_sizes = data
         name = utt_ids[0]
         print(name)
-        if opt.feat_type == 'kaldi_fbank':
-            feats = (inputs + fbank_cmvn[0, :]) * fbank_cmvn[1, :]  
-        else:
-            feats = feat_model(inputs, fbank_cmvn)        
+        enhance_outputs = enhance_model(inputs, log_inputs, input_sizes)
+        feats = feat_model(enhance_outputs, fbank_cmvn)        
         nbest_hyps = asr_model.recognize(feats, opt, opt.char_list, rnnlm=rnnlm, fstlm=fstlm)
         # get 1best and remove sos
         y_hat = nbest_hyps[0]['yseq'][1:]
