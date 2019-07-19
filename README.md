@@ -22,12 +22,11 @@ The system consists of a mask-based enhancement network, an attention-based enco
 
 # Training
 
-### Baseline(cross-entropy loss)
-The baseline system is bulit following the Kaldi chime4/s5 1ch recipe. The acoustic model is a DNN with 7 hidden layers. 
-After RBM pre-training, the model is trained by minimizing the cross-entropy loss.
+### Baseline(e2e asr train)
+You can train the E2E ASR network using the clean speech data and multi-condition training strategy i.e., optimization with both the clean and noisy speech.
 
 ```
-python3 main_baseline.py --train_scp Your train directory --val_scp Your val directory --eval_scp  Your test directory 
+python3 asr_train.py --dataroot Your data directory(including train, dev and test dataset) 
 
 ```
 
