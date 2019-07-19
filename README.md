@@ -14,7 +14,7 @@ You need build train, dev and test directory. Each has ```clean_feats.scp``` ```
 
 # Model
 
-The system consists of a mask-based enhancement network, an attention-based encoderdecoder network, a fbank feature extraction network and a discriminant network. The enhancement network transforms the noisy STFT features to the enhanced STFT features. The fbank feature extraction network is used to extract the normalized log fbank features. Subsequently, the end-to-end ASR model estimates the posteriori probabilities for output labels. Moreover, The discriminant network is used to distinguish between the enhanced features and clean ones.
+The system consists of a mask-based enhancement network, an attention-based encoderdecoder network, a fbank feature extraction network and a discriminant network. The enhancement network transforms the noisy STFT features to the enhanced STFT features. The fbank feature extraction network is used to extract the normalized log fbank features. The end-to-end ASR model estimates the posteriori probabilities for output labels. The discriminant network is used to distinguish between the enhanced features and clean ones.
 
 <div align="center">
 <img src="https://github.com/bliunlpr/Robust_e2e_gan/blob/master/fig/framework.Jpeg"  height="400" width="495">
