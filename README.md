@@ -8,6 +8,7 @@ Python 3.5, PyTorch 0.4.0.
 # Data
 ### AISHELL
 You can download [AISHELL](http://www.aishelltech.com/kysjcp) to run the code.
+You can run ```sh run.sh ``` for AISHELL, but it's recommended that you run the commands one by one.
 
 ### Your Own Dataset
 You need build train, dev and test directory. Each has ```clean_feats.scp``` ```noisy_feats.scp``` and ```text```. You can run ```python3 data/prepare_feats.py data_dir feat_dir noise_repeat_num``` to generate the noisy data ```noisy_feats.scp```.
