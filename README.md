@@ -22,7 +22,7 @@ The system consists of a mask-based enhancement network, an attention-based enco
 
 # Training
 
-### Baseline(e2e asr train)
+### E2E ASR training
 You can train the E2E ASR network using the clean speech data and multi-condition training strategy i.e., optimization with both the clean and noisy speech.
 
 ```
@@ -30,14 +30,25 @@ python3 asr_train.py --dataroot Your data directory(including train, dev and tes
 
 ```
 
-### Deep Adversarial Training
-We alternatively train the parameters of D, G and C to fine-tune the model by the Deep Adversarial Training Algorithm. 
-Three components are implemented with neural networks and the parameters are updated by stochastic gradient descent.
+### Enhancement Training
+You can train the enhancement network by the mask loss function.
 
 ```
-python3 main.py --train_scp Your train directory --val_scp Your val directory --eval_scp  Your test directory 
-```
+python3 enhance_base_train.py --dataroot Your data directory
 
+```
+or the mask fbank loss function.
+
+```
+python3 enhance_fbank_train.py --dataroot Your data directory
+
+```
+or the gan loss function.
+
+```
+python3 enhance_gan_train.py --dataroot Your data directory
+
+```
 # Decoding
 We use the Kaldi WFST decoder for decoding in all the experiments.
 ```
