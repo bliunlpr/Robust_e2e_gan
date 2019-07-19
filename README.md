@@ -28,7 +28,6 @@ You can train the E2E ASR network using the clean speech data and multi-conditio
 
 ```
 python3 asr_train.py --dataroot Your data directory(including train, dev and test dataset) 
-
 ```
 
 ### Enhancement Training
@@ -36,36 +35,30 @@ You can train the enhancement network by the mask loss function.
 
 ```
 python3 enhance_base_train.py --dataroot Your data directory
-
 ```
 or the mask fbank loss function.
 
 ```
 python3 enhance_fbank_train.py --dataroot Your data directory
-
 ```
 or the gan loss function.
 
 ```
 python3 enhance_gan_train.py --dataroot Your data directory
-
 ```
 
 ### Joint Training
 You can jointly train the enhancement network and end-to-end ASR network by the ASR loss.
 ```
 python3 joint_base_train.py --dataroot Your data directory
-
 ```
 You can also jointly train the enhancement, end-to-end ASR network and a discriminant network by the adversarial loss.
 ```
 python3 joint_train.py --dataroot Your data directory
-
 ```
 
 # Decoding
 We use the beam search for decoding in all the experiments.
 ```
 python3 asr_recog.py 
-
 ```
