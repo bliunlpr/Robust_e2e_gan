@@ -8,7 +8,6 @@ Python 3.5, PyTorch 0.4.0.
 # Data
 ### AISHELL
 You can download [AISHELL](http://www.aishelltech.com/kysjcp) to run the code.
-
 You can run ```sh run.sh ``` for AISHELL, but it's recommended that you run the commands one by one.
 
 ### Your Own Dataset
