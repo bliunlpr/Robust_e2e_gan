@@ -10,11 +10,13 @@ Python 3.5, PyTorch 0.4.0.
 You can download [AISHELL](http://www.aishelltech.com/kysjcp) to run the code.
 
 ### Your Own Dataset
-You need build train, dev and test directory. Each has ```clean_feats.scp``` ```noisy_feats.scp``` and ```text```. 
+You need build train, dev and test directory. Each has ```clean_feats.scp``` ```noisy_feats.scp``` and ```text```. You can run ```python3 data/prepare_feats.py data_dir feat_dir noise_repeat_num``` to generate the noisy data ```noisy_feats.scp```.
 
 # Model
 
-The model consists of a generator(G), a discriminator (D) and a classifier(C). The generator G performs the speech enhancement. It transforms the noisy speech signals into the enhanced version. The discriminator D aims to distinguish between the enhanced signals and clean ones. The classifier C classifies senones by features derivated from G. 
+The system consists of a mask-based enhancement network, an attention-based encoderdecoder network, a fbank feature extraction 
+network and a discriminant network. The enhancement network transforms the noisy STFT features to the enhanced STFT features.
+The fbank feature extraction network is used to extract the normalized log fbank features. Subsequently, the end-to-end ASR model realized by the attention-based encoder-decoder network estimates the posteriori probabilities for output labels. Moreover, The discriminant network is used to distinguish between the enhanced features and clean ones.
 
 <div align="center">
 <img src="https://github.com/bliunlpr/Robust_e2e_gan/blob/master/fig/framework.Jpeg"  height="400" width="495">
